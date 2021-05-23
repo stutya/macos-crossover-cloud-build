@@ -113,6 +113,10 @@ jobs:
       - name: Patch DXVK
         if: startsWith(matrix.CROSS_OVER_VERSION, '20')
         run: patch sources/dxvk/src/util/rc/util_rc_ptr.h < dxvk_util_rc_ptr.patch
+        
+      - name: Patch Keyboard
+        if: startsWith(matrix.CROSS_OVER_VERSION, '20')
+        run: rm sources/wine/dlls/dinput/keyboard.c && cp keyboard.c sources/wine/dlls/dinput/keyboard.c
 
 
       ############ Build LLVM / Clang ##############
