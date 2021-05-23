@@ -26,7 +26,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        CROSS_OVER_VERSION: [20.0.4, 20.0.2, 20.0.1, 20.0.0, 19.0.2]
+        CROSS_OVER_VERSION: [20.0.4]
 
     runs-on:  macos-10.15
 
@@ -177,32 +177,6 @@ jobs:
         with:
           name: ${{ env.TOOLS_INSTALLATION }}
           path: ${{ env.INSTALLROOT }}/${{ env.TOOLS_INSTALLATION }}.tar.gz
-
-
-      ############ Build DXVK ##############
-
-      - name: Build DXVK
-        if: startsWith(matrix.CROSS_OVER_VERSION, '20')
-        run: |
-          set -x
-          PATH="$(brew --prefix coreutils)/libexec/gnubin:${PATH}" ${{ env.DXVK_BUILDSCRIPT }} master ${{ env.INSTALLROOT }}/${{ env.DXVK_INSTALLATION }} --no-package
-
-      - name: Tar DXVK
-        if: startsWith(matrix.CROSS_OVER_VERSION, '20')
-        run: |
-          set -x
-          pushd ${{ env.INSTALLROOT }}
-          tar -czf ${{ env.DXVK_INSTALLATION }}.tar.gz ${{ env.DXVK_INSTALLATION }}
-          popd
-
-      - name: Upload DXVK
-        if: startsWith(matrix.CROSS_OVER_VERSION, '20')
-        uses: actions/upload-artifact@v2
-        with:
-          name: ${{ env.DXVK_INSTALLATION }}
-          path: ${{ env.INSTALLROOT }}/${{ env.DXVK_INSTALLATION }}.tar.gz
-
-
       ############ Build 64bit Version ##############
 
       - name: Configure wine64
@@ -252,73 +226,6 @@ jobs:
         run: |
           pushd ${{ env.BUILDROOT }}/wine64
           make -j$(sysctl -n hw.ncpu 2>/dev/null)
-          popd
-
-
-      ############ Build 32bit Version (WoW64) ##############
-
-      - name: Configure wine32on64
-        env:
-          CC: clang
-          CXX: clang++
-          # see https://github.com/Gcenx/macOS_Wine_builds/issues/17#issuecomment-750346843
-          CROSSCFLAGS: "-g -O2 -fcommon"
-          # Xcode12 by default enables '-Werror,-Wimplicit-function-declaration' (49917738)
-          # this causes wine(64) builds to fail so needs to be disabled.
-          # https://developer.apple.com/documentation/xcode-release-notes/xcode-12-release-notes
-          CFLAGS: "-g -O2 -Wno-implicit-function-declaration -Wno-deprecated-declarations -Wno-format"
-          LDFLAGS: "-Wl,-headerpad_max_install_names"
-        run: |
-          set -x
-
-          export SDL2_CFLAGS="-I$(brew --prefix sdl2)/include"
-
-          export PNG_CFLAGS="-I$(brew --prefix libpng)/include"
-          export PNG_LIBS="-L$(brew --prefix libpng)/lib"
-
-          mkdir -p ${{ env.BUILDROOT }}/wine32on64
-          pushd ${{ env.BUILDROOT }}/wine32on64
-          ${{ env.WINE_CONFIGURE }} \
-                    --enable-win32on64 \
-                    --with-wine64=${{ env.BUILDROOT }}/wine64 \
-                    --disable-tests \
-                    --without-alsa \
-                    --without-capi \
-                    --without-dbus \
-                    --without-inotify \
-                    --without-oss \
-                    --without-pulse \
-                    --without-udev \
-                    --without-v4l2 \
-                    --disable-winedbg \
-                    --without-cms \
-                    --without-gstreamer \
-                    --without-gsm \
-                    --without-gphoto \
-                    --without-sane \
-                    --with-png \
-                    --with-sdl \
-                    --without-vkd3d \
-                    --without-vulkan \
-                    --disable-vulkan_1 \
-                    --disable-winevulkan \
-                    --without-x
-          popd
-
-      - name: Build wine32on64
-        run: |
-          pushd ${{ env.BUILDROOT }}/wine32on64
-          make -j$(sysctl -n hw.ncpu 2>/dev/null)
-          popd
-
-
-      ############ Install wine ##############
-
-      - name: Install wine32on64
-        run: |
-          set -x
-          pushd ${{ env.BUILDROOT }}/wine32on64
-          make install-lib DESTDIR="${{ env.INSTALLROOT }}/${{ env.WINE_INSTALLATION }}"
           popd
 
       - name: Install wine64
